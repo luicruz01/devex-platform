@@ -1,0 +1,5 @@
+#!/bin/sh
+# DevEx pre-commit hook — managed by devex CLI
+# Do not edit manually. Run `devex init` to reinstall.
+devex check
+exit $?

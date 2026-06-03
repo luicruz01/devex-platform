@@ -1,0 +1,8 @@
+dora_destination: cloudwatch
+environments:
+- sandbox
+- staging
+- production
+stack: python-lambda-cdk
+team: platform
+work_id_pattern: ^[A-Z]+-\d+$

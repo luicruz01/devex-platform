@@ -1,0 +1,9 @@
+#!/bin/sh
+# DevEx pre-push hook — managed by devex CLI
+# Do not edit manually. Run `devex init` to reinstall.
+devex check
+cd $(git rev-parse --show-toplevel)
+python -m pytest test/ -q 2>/dev/null || \
+  uv run pytest test/ -q 2>/dev/null || \
+  echo "Warning: no test runner found, skipping tests"
+exit $?

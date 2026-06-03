@@ -1,20 +1,14 @@
 import typer
-from rich.console import Console
 
-app = typer.Typer()
-console = Console()
+from devex_cli.commands.branch import branch
+from devex_cli.commands.check import check
+from devex_cli.commands.init import init
 
+app = typer.Typer(
+    help="DevEx CLI — Golden Path enforcement tool",
+    no_args_is_help=True,
+)
 
-@app.command()
-def init() -> None:
-    console.print("devex init — coming soon")
-
-
-@app.command()
-def branch(work_id: str, name: str) -> None:
-    console.print("devex branch — coming soon")
-
-
-@app.command()
-def check() -> None:
-    console.print("devex check — coming soon")
+app.command()(init)
+app.command()(branch)
+app.command()(check)
