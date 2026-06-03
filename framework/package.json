@@ -1,0 +1,28 @@
+{
+  "name": "@luicruz01/devex-framework",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "github-actions-workflow-ts": "^1.2.3",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^22.0.0"
+  }
+}
