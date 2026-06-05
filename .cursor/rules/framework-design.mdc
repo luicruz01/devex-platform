@@ -1,0 +1,63 @@
+---
+description: Rules for contributors extending the devex-platform framework — new stacks, new CLI commands, and the DoraEvent contract.
+globs: ["framework/**", "cli/**"]
+alwaysApply: false
+---
+
+# Framework Design Rules
+
+## Adding a New Stack
+
+Follow these four steps in order. All four are required.
+
+1. Add the stack name to the `SupportedStack` union type in `framework/src/stack-detector.ts`.
+2. Add the signal-file detection case inside `StackDetector.detect()` in `framework/src/stack-detector.ts`. Signal files are: `pyproject.toml` → `python`, `go.mod` → `go`, `package.json` → `typescript`, `deps.edn` → `clojure`.
+3. Add stack-specific test steps inside `PrPipelineGenerator` in `framework/src/pr-pipeline-generator.ts`.
+4. Add a test case in `framework/src/framework.test.ts` that asserts the new stack is detected from its signal file.
+
+DO NOT add a stack that lacks a signal-file test in `framework.test.ts` — detection without a test is untrusted.
+
+## Adding a New CLI Command
+
+Follow these six steps in order. All six are required.
+
+1. Create the command module at `cli/src/devex_cli/commands/{name}.py`.
+2. Import the command and register it in `cli/src/devex_cli/main.py`.
+3. Emit a `DoraEvent` at the end of the command — both on success (`status: "success"`) and on failure (`status: "failure"`). Do not skip emission on error paths.
+4. Use `Rich` console (`from rich.console import Console`) for all terminal output. Never call `print()`.
+5. Exit with code `0` on success and code `1` on failure. Use `raise typer.Exit(code=1)` for failures.
+6. Add tests in `cli/tests/test_{name}.py` using `typer.testing.CliRunner`.
+
+DO NOT create a command without a corresponding test file in `cli/tests/`.
+
+## DoraEvent Contract
+
+Every CLI command and every pipeline stage must emit a `DoraEvent`.
+
+The schema is fixed at version `"1.0"`. Required fields:
+
+- `version` — always the string `"1.0"`, never a number, never `1`, never `"2.0"`
+- `work_id` — the Work ID from the current context (arg → `DEVEX_WORK_ID` env → `.devex/config.yaml`)
+- `team` — the team name from `.devex/config.yaml`
+- `stack` — one of `python-lambda-cdk`, `go`, `typescript`, `clojure` as detected by `StackDetector`
+- `stage` — the pipeline stage or CLI command name
+- `environment` — one of `sandbox`, `staging`, `production`, `local`
+- `status` — `"success"` or `"failure"`
+- `duration_ms` — elapsed milliseconds; use `0` if not measurable
+- `timestamp` — ISO 8601 UTC string, e.g. `"2026-01-01T00:00:00Z"`
+
+DO NOT add fields to the schema without updating both the Python emitter (`cli/src/devex_cli/dora.py`) and the TypeScript types in `framework/src/`.
+
+DO NOT change the `version` field to anything other than `"1.0"` without a platform team decision.
+
+## General Prohibitions
+
+DO NOT add business logic to the CLI or the Framework. Business logic belongs in the consuming services (e.g. `transactionify`).
+
+DO NOT hardcode team names or Work ID patterns anywhere in the framework or CLI. These are configured per-project via `.devex/config.yaml`.
+
+DO NOT skip `DoraEvent` emission in any new command, even if the command is a dry-run or a query operation.
+
+DO NOT use `print()` anywhere in the CLI — always use `Rich` console.
+
+DO NOT use `console.log()` for user-facing output in the Framework — `console.log` is reserved for `DoraEvent` JSON emission to stdout.

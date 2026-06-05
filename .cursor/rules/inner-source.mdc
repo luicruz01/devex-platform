@@ -1,0 +1,78 @@
+---
+description: Inner-source contribution process for devex-platform — proposals, branch naming, PR requirements, and what requires platform team approval.
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Inner-Source Contribution Rules
+
+## Proposing a Change
+
+Before writing any code for a non-trivial change, open a GitHub Issue with the title format:
+
+```
+[PROPOSAL] {short description}
+```
+
+The issue body must include:
+- The problem being solved
+- The proposed solution
+- Which teams are affected
+
+DO NOT open a PR for changes that require platform team approval until the proposal issue has been approved by the platform team. Writing code before approval wastes everyone's review time.
+
+## Branch Naming
+
+Always create branches using the CLI:
+
+```
+devex branch {WORK_ID} {description}
+```
+
+The Work ID must match `^[A-Z]+-\d+$` (e.g. `PLAT-42`, `FIN-123`).
+
+The branch name produced will be `{WORK_ID}/{description}` (e.g. `PLAT-42/feat/go-stack-support`).
+
+DO NOT create branches manually with `git checkout -b` — use `devex branch` so the Work ID is registered in `.devex/config.yaml` and a `DoraEvent` is emitted.
+
+DO NOT use branch names without a Work ID prefix (e.g. `fix/bug`, `update-docs`).
+
+## PR Requirements
+
+PR title format:
+
+```
+{WORK_ID}: {lowercase imperative description}
+```
+
+Example: `PLAT-42: add Go stack support`
+
+All of the following must be true before merging:
+
+- PR title starts with a valid Work ID matching `^[A-Z]+-\d+$`
+- Two reviewers have approved — at least one must be from the platform team
+- All CI tests pass
+- `devex check` passes on the branch
+
+DO NOT merge a PR that has fewer than two approvals.
+
+DO NOT merge a PR where `devex check` is failing.
+
+## What Requires Platform Team Approval
+
+The following changes require a `[PROPOSAL]` issue to be approved by the platform team before a PR may be opened:
+
+- Changes to the `DoraEvent` schema (any field addition, removal, or type change)
+- Changes to the `LambdaServiceConstruct` public API in `framework/src/`
+- New CLI commands added to `cli/src/devex_cli/commands/`
+- Changes to the `.devex/config.yaml` schema
+
+## What Teams Can Do Without Approval
+
+The following do not require a proposal issue:
+
+- Adding or improving examples and documentation
+- Reporting bugs by opening a GitHub Issue
+- Proposing new stack support — the proposal itself does not require pre-approval, but the implementation PR does
+
+DO NOT interpret "no approval needed" as "no review needed" — all PRs still require two reviewers.
