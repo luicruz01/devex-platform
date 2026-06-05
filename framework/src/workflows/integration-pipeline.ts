@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: Emit DORA event
         run: |
-          echo '{"version":"1.0","work_id":"${config.team}","team":"${config.team}","stack":"${config.stack}","stage":"integration-pipeline","environment":"production","status":"success","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          echo '{"version":"1.0","work_id":"\${{ github.ref_name }}","team":"${config.team}","stack":"${config.stack}","stage":"integration-pipeline","environment":"production","status":"success","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 `;
   }
 }
