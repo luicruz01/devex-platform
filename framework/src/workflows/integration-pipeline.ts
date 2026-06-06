@@ -22,6 +22,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,7 +39,12 @@ jobs:
           if [ "\${{ job.status }}" != "success" ]; then
             STATUS="failure"
           fi
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-sandbox","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          FAILURE_REASON=""
+          if [ "$STATUS" = "failure" ]; then
+            FAILURE_REASON=",\"failure_reason\":\"pipeline-step-failed\""
+          fi
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"deploy-sandbox\",\"environment\":\"sandbox\",\"status\":\"$STATUS\"$FAILURE_REASON,\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
   deploy-staging:
     needs: [deploy-sandbox]
@@ -48,6 +55,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -63,7 +72,12 @@ jobs:
           if [ "\${{ job.status }}" != "success" ]; then
             STATUS="failure"
           fi
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-staging","environment":"staging","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          FAILURE_REASON=""
+          if [ "$STATUS" = "failure" ]; then
+            FAILURE_REASON=",\"failure_reason\":\"pipeline-step-failed\""
+          fi
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"deploy-staging\",\"environment\":\"staging\",\"status\":\"$STATUS\"$FAILURE_REASON,\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
   deploy-production:
     needs: [deploy-staging]
@@ -74,6 +88,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -89,17 +105,25 @@ jobs:
           if [ "\${{ job.status }}" != "success" ]; then
             STATUS="failure"
           fi
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-production","environment":"production","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          FAILURE_REASON=""
+          if [ "$STATUS" = "failure" ]; then
+            FAILURE_REASON=",\"failure_reason\":\"pipeline-step-failed\""
+          fi
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"deploy-production\",\"environment\":\"production\",\"status\":\"$STATUS\"$FAILURE_REASON,\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
   emit-dora:
     needs: [deploy-production]
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Emit DORA event
         run: |
           WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"integration-pipeline","environment":"production","status":"success","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"integration-pipeline\",\"environment\":\"production\",\"status\":\"success\",\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 `;
   }
 }

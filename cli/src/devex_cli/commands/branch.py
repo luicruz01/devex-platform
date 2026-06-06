@@ -48,6 +48,7 @@ def branch(work_id: str, name: str) -> None:
             team=config.get("team", "platform"),
             stack=config.get("stack", "unknown"),
             duration_ms=duration_ms,
+            failure_reason="invalid-work-id",
         )
         DoraEmitter.emit(event)
         raise typer.Exit(code=1)
@@ -69,6 +70,7 @@ def branch(work_id: str, name: str) -> None:
             team=config.get("team", "platform"),
             stack=config.get("stack", "unknown"),
             duration_ms=duration_ms,
+            failure_reason="git-checkout-failed",
         )
         DoraEmitter.emit(event)
         raise typer.Exit(code=1)

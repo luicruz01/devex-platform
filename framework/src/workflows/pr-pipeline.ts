@@ -64,6 +64,8 @@ ${testSteps(config.stack)}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Contract validation
         if: hashFiles('openapi.yaml') != ''
         run: pip install schemathesis && schemathesis run openapi.yaml --dry-run
@@ -75,7 +77,8 @@ ${testSteps(config.stack)}
             STATUS="failure"
           fi
           WORK_ID=$(echo "\${{ github.head_ref }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"pr-pipeline","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}'
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"pr-pipeline\",\"environment\":\"sandbox\",\"status\":\"$STATUS\",\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
   deploy-sandbox:
     needs: [contract-validation]
@@ -86,6 +89,8 @@ ${testSteps(config.stack)}
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Record start time
+        run: echo "JOB_START=$SECONDS" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -101,7 +106,8 @@ ${testSteps(config.stack)}
             STATUS="failure"
           fi
           WORK_ID=$(echo "\${{ github.head_ref }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
-          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-sandbox","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}'
+          DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"deploy-sandbox\",\"environment\":\"sandbox\",\"status\":\"$STATUS\",\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 `;
   }
 }

@@ -96,9 +96,18 @@ def init(path: str = ".") -> None:
         table.add_row("pre-push", hook_status["pre-push"])
         console.print(table)
 
+        work_id = "N/A"
+        if config_path.exists():
+            try:
+                with config_path.open() as f:
+                    existing = yaml.safe_load(f) or {}
+                work_id = existing.get("work_id", "N/A")
+            except Exception:
+                pass
+
         duration_ms = int((time.monotonic() - start) * 1000)
         event = DoraEmitter.build_event(
-            work_id="N/A",
+            work_id=work_id,
             stage="init",
             status="success",
             stack=config_stack,

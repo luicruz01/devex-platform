@@ -127,6 +127,7 @@ def check(path: str = ".") -> None:
             team=config.get("team", "platform"),
             stack=stack,
             duration_ms=duration_ms,
+            failure_reason=None if all_ok else "check-failed",
         )
         DoraEmitter.emit(event)
 
