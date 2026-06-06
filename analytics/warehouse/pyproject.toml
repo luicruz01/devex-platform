@@ -1,0 +1,31 @@
+[project]
+name = "devex-warehouse"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "boto3>=1.35.0",
+  "pydantic>=2.0",
+  "devex-schema",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov",
+  "moto[dynamodb]>=5.0",
+  "freezegun>=1.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/warehouse"]
+
+[tool.uv.sources]
+devex-schema = { path = "../schema/python" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "../schema/python"]
