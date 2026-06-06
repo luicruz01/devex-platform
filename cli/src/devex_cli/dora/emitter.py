@@ -38,7 +38,7 @@ class DoraEmitter:
                 ),
             }
 
-        print(json.dumps(event, indent=2))
+        print(json.dumps(event))
 
         events_dir = Path.cwd() / ".devex"
         events_dir.mkdir(parents=True, exist_ok=True)

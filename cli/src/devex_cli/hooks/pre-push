@@ -1,9 +1,33 @@
 #!/bin/sh
 # DevEx pre-push hook — managed by devex CLI
 # Do not edit manually. Run `devex init` to reinstall.
+
 devex check
-cd $(git rev-parse --show-toplevel)
-python -m pytest test/ -q 2>/dev/null || \
+DEVEX_EXIT=$?
+
+if [ "$DEVEX_EXIT" -ne 0 ]; then
+  exit $DEVEX_EXIT
+fi
+
+TEST_EXIT=0
+
+if [ -f "pyproject.toml" ]; then
+  uv run pytest tests/ -q 2>/dev/null || \
   uv run pytest test/ -q 2>/dev/null || \
-  echo "Warning: no test runner found, skipping tests"
-exit $?
+  python -m pytest tests/ -q 2>/dev/null
+  TEST_EXIT=$?
+elif [ -f "go.mod" ]; then
+  go test ./... -q 2>/dev/null
+  TEST_EXIT=$?
+elif [ -f "package.json" ]; then
+  pnpm test --silent 2>/dev/null || \
+  npm test --silent 2>/dev/null
+  TEST_EXIT=$?
+fi
+
+if [ "$TEST_EXIT" -ne 0 ]; then
+  echo "Pre-push: tests failed. Fix tests before pushing."
+  exit 1
+fi
+
+exit 0

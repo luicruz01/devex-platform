@@ -16,7 +16,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "github-actions-workflow-ts": "^1.2.3",
     "aws-cdk-lib": "^2.0.0",
     "constructs": "^10.0.0"
   },

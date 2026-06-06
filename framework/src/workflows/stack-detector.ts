@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-export type SupportedStack = "python-lambda-cdk" | "go" | "typescript" | "clojure";
+export type SupportedStack =
+  | "python-lambda-cdk"
+  | "go"
+  | "typescript"
+  | "clojure"
+  | "unknown";
 
 export class StackDetector {
   detect(projectPath: string): SupportedStack {
@@ -9,6 +14,6 @@ export class StackDetector {
     if (existsSync(join(projectPath, "go.mod"))) return "go";
     if (existsSync(join(projectPath, "package.json"))) return "typescript";
     if (existsSync(join(projectPath, "deps.edn"))) return "clojure";
-    return "python-lambda-cdk";
+    return "unknown";
   }
 }

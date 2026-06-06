@@ -64,8 +64,8 @@ describe("StackDetector", () => {
     expect(detector.detect(tmpDir)).toBe("go");
   });
 
-  it("returns python-lambda-cdk as default for unknown", () => {
-    expect(detector.detect(tmpDir)).toBe("python-lambda-cdk");
+  it("returns unknown when no signal file is found", () => {
+    expect(detector.detect(tmpDir)).toBe("unknown");
   });
 });
 

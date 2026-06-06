@@ -21,8 +21,11 @@ devex check
 CI/CD pipeline generation and reusable CDK constructs, with typed DORA event emission.
 
 ```bash
-pnpm add github:luicruz01/devex-platform#main
+pnpm add github:luicruz01/devex-platform#main \
+  --filter @luicruz01/devex-framework
 ```
+
+> The framework lives in the `framework/` subdirectory of the monorepo.
 
 ```typescript
 import { PrPipelineGenerator } from "@luicruz01/devex-framework";
@@ -60,13 +63,16 @@ devex init
 devex branch FIN-123 feat/your-feature
 ```
 
-Every change must be tied to a Work ID (e.g. `FIN-123` from Jira or Linear). The branch is created as `FIN-123/feat/your-feature`, the Work ID is registered in config, and a `DoraEvent` is emitted. Manual `git checkout -b` bypasses this audit trail.
+Every change must be tied to a Work ID (e.g. `FIN-123` from Jira or Linear). The branch is created as `FIN-123/feat/your-feature` and a `DoraEvent` is emitted. Manual `git checkout -b` bypasses this audit trail.
 
 ### Step 4: Consume the Framework in your CDK stack
 
 ```bash
-pnpm add github:luicruz01/devex-platform#main
+pnpm add github:luicruz01/devex-platform#main \
+  --filter @luicruz01/devex-framework
 ```
+
+> The framework lives in the `framework/` subdirectory of the monorepo.
 
 ```typescript
 import * as cdk from "aws-cdk-lib";
@@ -119,9 +125,9 @@ The generated workflow validates the branch name, runs stack-specific tests and 
 | Stack | Signal file | Test command | Lint command |
 |-------|-------------|--------------|--------------|
 | python-lambda-cdk | `pyproject.toml` | `pytest test/ -v` | `ruff check .` |
-| go | `go.mod` | `go test ./...` | `go vet ./...` |
+| go | `go.mod` | `go test ./...` | `golangci-lint (planned)` |
 | typescript | `package.json` | `pnpm test` | `eslint .` |
-| clojure | `deps.edn` | `lein test` | `clj-kondo --lint src` |
+| clojure | `deps.edn` | `lein test` | `clj-kondo (planned)` |
 
 Stack detection runs automatically during `devex init` and drives both local checks and generated pipeline steps.
 

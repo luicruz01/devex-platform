@@ -29,6 +29,15 @@ jobs:
           aws-region: ${region}
       - name: Deploy to sandbox
         run: cdk deploy ${sandboxStack} --require-approval never
+      - name: Emit DORA event
+        if: always()
+        run: |
+          WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-sandbox","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 
   deploy-staging:
     needs: [deploy-sandbox]
@@ -46,6 +55,15 @@ jobs:
           aws-region: ${region}
       - name: Deploy to staging
         run: cdk deploy ${stagingStack} --require-approval never
+      - name: Emit DORA event
+        if: always()
+        run: |
+          WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-staging","environment":"staging","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 
   deploy-production:
     needs: [deploy-staging]
@@ -63,6 +81,15 @@ jobs:
           aws-region: ${region}
       - name: Deploy to production
         run: cdk deploy ${productionStack} --require-approval never
+      - name: Emit DORA event
+        if: always()
+        run: |
+          WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-production","environment":"production","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 
   emit-dora:
     needs: [deploy-production]
@@ -71,7 +98,8 @@ jobs:
     steps:
       - name: Emit DORA event
         run: |
-          echo '{"version":"1.0","work_id":"\${{ github.ref_name }}","team":"${config.team}","stack":"${config.stack}","stage":"integration-pipeline","environment":"production","status":"success","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+          WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"integration-pipeline","environment":"production","status":"success","duration_ms":0,"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 `;
   }
 }

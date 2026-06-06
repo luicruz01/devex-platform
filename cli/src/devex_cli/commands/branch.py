@@ -17,10 +17,21 @@ def build_branch_name(work_id: str, name: str) -> str:
 def branch(work_id: str, name: str) -> None:
     """Create a git branch prefixed with the Work ID."""
     start = time.monotonic()
+
     try:
         config = ConfigLoader.load(work_id_arg=work_id)
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
+        duration_ms = int((time.monotonic() - start) * 1000)
+        event = DoraEmitter.build_event(
+            work_id="N/A",
+            stage="branch-create",
+            status="failure",
+            team="platform",
+            stack="unknown",
+            duration_ms=duration_ms,
+        )
+        DoraEmitter.emit(event)
         raise typer.Exit(code=1) from exc
 
     pattern = config.get("work_id_pattern", "^[A-Z]+-\\d+$")
@@ -29,6 +40,16 @@ def branch(work_id: str, name: str) -> None:
             f"[red]Error:[/red] Invalid Work ID '{work_id}'. "
             f"Must match pattern: {pattern}"
         )
+        duration_ms = int((time.monotonic() - start) * 1000)
+        event = DoraEmitter.build_event(
+            work_id=work_id,
+            stage="branch-create",
+            status="failure",
+            team=config.get("team", "platform"),
+            stack=config.get("stack", "unknown"),
+            duration_ms=duration_ms,
+        )
+        DoraEmitter.emit(event)
         raise typer.Exit(code=1)
 
     branch_name = build_branch_name(work_id, name)
@@ -40,6 +61,16 @@ def branch(work_id: str, name: str) -> None:
     if result.returncode != 0:
         stderr = result.stderr.strip() or result.stdout.strip()
         console.print(f"[red]Error:[/red] {stderr}")
+        duration_ms = int((time.monotonic() - start) * 1000)
+        event = DoraEmitter.build_event(
+            work_id=work_id,
+            stage="branch-create",
+            status="failure",
+            team=config.get("team", "platform"),
+            stack=config.get("stack", "unknown"),
+            duration_ms=duration_ms,
+        )
+        DoraEmitter.emit(event)
         raise typer.Exit(code=1)
 
     console.print(f"[green]Created branch:[/green] {branch_name}")

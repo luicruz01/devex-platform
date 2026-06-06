@@ -1,7 +1,6 @@
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Tags, Duration } from "aws-cdk-lib";
-import { DoraEmitter } from "../dora/emitter.js";
 
 export interface LambdaServiceProps {
   handlerPath: string;
@@ -39,14 +38,5 @@ export class LambdaServiceConstruct extends Construct {
     Tags.of(this.function).add("devex:managed", "true");
 
     props.table.grantReadWriteData(this.function);
-
-    const emitter = new DoraEmitter();
-    emitter.emit(
-      emitter.build({
-        work_id: props.workId ?? "untracked",
-        stage: "deploy-sandbox",
-        status: "success",
-      })
-    );
   }
 }

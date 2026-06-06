@@ -17,8 +17,8 @@ export interface DoraEvent {
   work_id: string;
   team: string;
   stack: string;
-  stage: string;
-  environment: string;
+  stage: DoraStage;
+  environment: DoraEnvironment;
   status: DoraStatus;
   duration_ms: number;
   timestamp: string;

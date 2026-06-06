@@ -26,6 +26,9 @@ function testSteps(stack: SupportedStack): string {
     case "clojure":
       return `      - name: Run tests
         run: lein test`;
+    case "unknown":
+      return `      - name: No stack detected
+        run: echo "Stack unknown — add signal file (pyproject.toml, go.mod, etc.)"`;
   }
 }
 
@@ -64,6 +67,15 @@ ${testSteps(config.stack)}
       - name: Contract validation
         if: hashFiles('openapi.yaml') != ''
         run: pip install schemathesis && schemathesis run openapi.yaml --dry-run
+      - name: Emit DORA event
+        if: always()
+        run: |
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          WORK_ID=$(echo "\${{ github.head_ref }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"pr-pipeline","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}'
 
   deploy-sandbox:
     needs: [contract-validation]
@@ -81,6 +93,15 @@ ${testSteps(config.stack)}
           aws-region: ${region}
       - name: Deploy to sandbox
         run: cdk deploy ${stackName} --require-approval never
+      - name: Emit DORA event
+        if: always()
+        run: |
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          WORK_ID=$(echo "\${{ github.head_ref }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          echo '{"version":"1.0","work_id":"'"$WORK_ID"'","team":"${config.team}","stack":"${config.stack}","stage":"deploy-sandbox","environment":"sandbox","status":"'"$STATUS"'","duration_ms":0,"timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}'
 `;
   }
 }
