@@ -1,0 +1,41 @@
+---
+description: Command behavior, config precedence, and telemetry rules for the Python CLI package.
+alwaysApply: false
+globs:
+  - cli/**
+---
+# CLI Package Rules
+## What this package is
+`cli/src/devex_cli/main.py` registers exactly three Typer commands: `init`, `branch`, and `check`. The implementation lives in `cli/src/devex_cli/commands/init.py`, `branch.py`, and `check.py`, with shared config loading in `cli/src/devex_cli/config/loader.py` and telemetry emission in `cli/src/devex_cli/dora/emitter.py`.
+
+## What this is not
+- It is not an AWS deployment client.
+- It is not a TypeScript package.
+- It is not the place to add analytics storage or metrics logic.
+
+## Command behavior you must preserve
+- Keep `ConfigLoader.load()` in `cli/src/devex_cli/config/loader.py` as the source of Work ID precedence: explicit argument, then `DEVEX_WORK_ID`, then `.devex/config.yaml`.
+- Keep `ConfigLoader.detect_stack()` aligned with the actual signal files it checks today: `pyproject.toml`, `go.mod`, `package.json`, and `deps.edn`.
+- Keep `init()` in `cli/src/devex_cli/commands/init.py` responsible for creating `.devex/config.yaml`, copying `pre-commit` and `pre-push` from `cli/src/devex_cli/hooks/`, and printing the Rich summary table.
+- Keep `branch()` in `cli/src/devex_cli/commands/branch.py` responsible for validating the Work ID, creating `WORK-ID/name` through `git checkout -b`, and emitting a `branch-create` event on both success and failure.
+- Keep `check()` in `cli/src/devex_cli/commands/check.py` limited to the current three checks: branch name, latest commit message, and lint status.
+
+## Current lint and stack limits
+- `_run_lint()` in `cli/src/devex_cli/commands/check.py` currently executes `ruff check .` for Python stacks and `eslint .` for TypeScript stacks.
+- Go and Clojure currently return `"skipped"` from `_run_lint()` in `cli/src/devex_cli/commands/check.py`; do not document lint support for those stacks unless you implement it there.
+
+## DORA emission rules
+- Build CLI events through `DoraEmitter.build_event()` in `cli/src/devex_cli/dora/emitter.py`.
+- Emit CLI events through `DoraEmitter.emit()` so they reach stdout and append to `.devex/dora-events.jsonl`.
+- Include `failure_reason` on failure paths when the command knows the cause, as `branch()` and `check()` already do.
+- Reserve `work_id="N/A"` for pre-branch flows like `init()` and `check()` when no Work ID is available yet.
+
+## Output rules
+- Use `rich.console.Console` for user-facing output in `cli/src/devex_cli/commands/*.py`.
+- Keep machine-readable JSON emission isolated to `cli/src/devex_cli/dora/emitter.py`.
+
+## DO NOT
+- DO NOT call `print()` from `cli/src/devex_cli/commands/init.py`, `branch.py`, or `check.py`.
+- DO NOT bypass `ConfigLoader.validate_work_id()` when adding new Work ID checks.
+- DO NOT hardcode hook source paths outside `_hooks_source_dir()` in `cli/src/devex_cli/commands/init.py`.
+- DO NOT add a new CLI command without registering it in `cli/src/devex_cli/main.py` and documenting its telemetry path in `cli/src/devex_cli/dora/emitter.py`.

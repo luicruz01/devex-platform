@@ -1,0 +1,37 @@
+---
+description: Export surface, workflow generation rules, and construct constraints for the TypeScript framework package.
+alwaysApply: false
+globs:
+  - framework/**
+---
+# Framework Package Rules
+## What this package is
+`framework/src/index.ts` exports the current public surface: `DoraEmitter`, `DoraEvent` types, `StackDetector`, `PrPipelineGenerator`, `IntegrationPipelineGenerator`, `LambdaServiceConstruct`, and `DEVEX_VERSION`.
+
+## What this is not
+- It is not a deployed service.
+- It is not the repository's source of truth for analytics metrics.
+- It is not Python code, even when it generates Python-oriented infrastructure.
+
+## Workflow generation rules
+- Keep `PrPipelineGenerator.generate()` in `framework/src/workflows/pr-pipeline.ts` generating the current job order: `validate`, `test`, `contract-validation`, and `deploy-sandbox`.
+- Keep `testSteps()` in `framework/src/workflows/pr-pipeline.ts` as the single switch for stack-specific test commands.
+- Keep `IntegrationPipelineGenerator.generate()` in `framework/src/workflows/integration-pipeline.ts` generating the current promotion order: `deploy-sandbox`, `deploy-staging`, `deploy-production`, then `emit-dora`.
+- Keep DORA emission in generated workflow YAML on `if: always()` steps for deploy and contract stages, as the current generators do.
+- Keep Work ID extraction in generated YAML tied to `grep -oE '[A-Z]+-[0-9]+'` against `github.head_ref` for PR workflows and `github.event.head_commit.message` for integration workflows unless you deliberately change the contract.
+
+## Construct rules
+- Keep `LambdaServiceConstruct` in `framework/src/constructs/lambda-service.ts` responsible for one Lambda function, table environment wiring, `devex:work-id` and `devex:managed` tags, and `grantReadWriteData`.
+- Preserve the current defaults in `LambdaServiceConstruct`: `codePath` defaults to `src/python`, `tableNameEnvVar` defaults to `TABLE_NAME`, and `timeout` defaults to `30`.
+- Acknowledge the current implementation when editing props: `LambdaServiceProps.runtime` exists in the interface, but the constructor currently hardcodes `lambda.Runtime.PYTHON_3_9`.
+
+## Type and export rules
+- Update `framework/src/dora/types.ts` when adding or removing framework-visible DORA stage, status, or environment values.
+- Update `framework/src/index.ts` whenever you add a new public export under `framework/src/`.
+- Keep `SupportedStack` and `StackDetector.detect()` in `framework/src/workflows/stack-detector.ts` in sync.
+
+## DO NOT
+- DO NOT add a new stack only in `SupportedStack`; also update `StackDetector.detect()` and `testSteps()` in `framework/src/workflows/pr-pipeline.ts`.
+- DO NOT claim `LambdaServiceProps.runtime` changes the runtime unless you wire it into `new lambda.Function(...)` in `framework/src/constructs/lambda-service.ts`.
+- DO NOT add raw DORA stage strings in workflow generators without updating `framework/src/dora/types.ts` and the shared schema package.
+- DO NOT move metrics logic or collector HTTP behavior into `framework/src/`.

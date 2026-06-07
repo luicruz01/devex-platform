@@ -1,85 +1,117 @@
 # devex-platform
 
-devex-platform is a Developer Experience ecosystem for engineering teams that need shared conventions, comparable DORA metrics, and a golden path from local development through CI/CD — without waiting on a central platform team for every change. It ships as two independent packages: a Python CLI for local enforcement and a TypeScript framework for pipeline generation and CDK infrastructure patterns. The reference adoption project [transactionify](https://github.com/luicruz01/transactionify) demonstrates end-to-end usage.
+Teams that standardize local workflow but leave branch policy, CI/CD generation, infrastructure patterns, and telemetry format to each service repository end up with recurring setup work and DORA data that cannot be compared across teams. `devex-platform` is for platform teams and service teams that want one golden path from laptop to deployment while keeping service code in each team repository. The repository publishes a Python CLI for local enforcement, a TypeScript framework for CDK and pipeline generation, and analytics packages that validate, collect, compute, analyze, and visualize DORA events.
 
-## Packages
+## Repository Structure
 
-### cli
+```text
+devex-platform/
+├── README.md                            # Repository overview, install commands, and adoption path.
+├── CONTRIBUTING.md                      # Contribution workflow and repository standards.
+├── AGENTS.md                            # Repository-specific agent instructions for local tooling.
+├── .gitignore                           # Git ignore rules for local artifacts and build output.
+├── .devex/                              # Example local DevEx state and emitted event log.
+│   └── dora-events.jsonl                # JSONL file written by local DORA emission flows.
+├── cli/                                 # Python CLI package distributed as `devex`.
+│   ├── src/devex_cli/                   # CLI commands, config loading, DORA emission, and git hooks.
+│   ├── tests/                           # CLI tests for commands, config, and Work ID validation.
+│   ├── pyproject.toml                   # Package metadata and uv entry point definition.
+│   ├── pyrightconfig.json               # Static analysis settings for the CLI package.
+│   └── uv.lock                          # Locked Python dependencies for reproducible CLI installs.
+├── framework/                           # TypeScript framework package for CDK and GitHub Actions generation.
+│   ├── src/                             # Source for constructs, workflow generators, and DORA types.
+│   ├── tests/                           # Framework tests for pipelines, construct behavior, and types.
+│   ├── package.json                     # Package metadata for `@luicruz01/devex-framework`.
+│   ├── pnpm-workspace.yaml              # pnpm workspace settings for the framework package.
+│   ├── pnpm-lock.yaml                   # Locked Node dependencies for the framework package.
+│   └── tsconfig.json                    # TypeScript compiler configuration.
+├── analytics/                           # Analytics packages for schema validation, ingestion, metrics, analysis, and dashboards.
+│   ├── schema/                          # Shared `DoraEvent` contract in Python and TypeScript.
+│   │   ├── python/                      # Pydantic schema package, emit helpers, and tests.
+│   │   ├── typescript/                  # Zod schema package, type exports, and tests.
+│   │   └── README.md                    # Schema versions, field reference, and usage examples.
+│   ├── collector/                       # FastAPI collector Lambda and DynamoDB persistence layer.
+│   │   ├── cdk/                         # CDK construct for deploying the collector Lambda.
+│   │   ├── src/collector/               # API handlers, enrichment, config, and storage logic.
+│   │   ├── tests/                       # Collector tests for endpoints, enrichment, and DynamoDB writes.
+│   │   ├── pyproject.toml               # Collector package metadata and dependencies.
+│   │   └── uv.lock                      # Locked Python dependencies for the collector.
+│   ├── warehouse/                       # Metrics engine that computes the four DORA metrics.
+│   │   ├── src/warehouse/               # Query services, data models, and metric calculations.
+│   │   ├── tests/                       # Warehouse tests for query behavior and metric computation.
+│   │   ├── pyproject.toml               # Warehouse package metadata and dependencies.
+│   │   └── uv.lock                      # Locked Python dependencies for the warehouse.
+│   ├── agent/                           # LLM analyst that produces weekly digests and risk flags.
+│   │   ├── src/agent/                   # Analyst runtime, prompts, config, and Lambda entry point.
+│   │   ├── tests/                       # Agent tests for LLM analysis flow and prompt construction.
+│   │   ├── pyproject.toml               # Agent package metadata and dependencies.
+│   │   └── uv.lock                      # Locked Python dependencies for the analyst.
+│   └── dashboard/                       # Streamlit dashboard for DORA and adoption reporting.
+│       ├── app.py                       # Streamlit application entry point.
+│       ├── components/                  # Reusable dashboard UI components.
+│       ├── data/                        # Mock data and data typing helpers.
+│       ├── views/                       # Overview, team detail, and adoption screens.
+│       ├── README.md                    # Dashboard usage and local run instructions.
+│       ├── pyproject.toml               # Dashboard package metadata and dependencies.
+│       ├── docker-compose.yml           # Local container entry point for dashboard development.
+│       └── uv.lock                      # Locked Python dependencies for the dashboard.
+├── docs/                                # Repository architecture documents.
+│   ├── adr.md                           # Architecture decision record for the current repository state.
+│   └── devex-platform-adr.pdf           # PDF export of the architecture decision record.
+├── .cursor/                             # Cursor-specific repository guidance.
+│   └── rules/                           # Cursor rules that encode contributor conventions.
+└── .kiro/                               # Kiro-specific repository guidance.
+    └── steering/                        # Steering documents for agent boundaries, DORA contract, and golden path rules.
+```
 
-Local Golden Path enforcement — Work ID validation, git hooks, standards checks, and DORA telemetry.
+## Quick Install
+
+### CLI via `uvx`
 
 ```bash
 uvx --from git+https://github.com/luicruz01/devex-platform#subdirectory=cli devex
 ```
 
-```bash
-devex check
-```
-
-### framework
-
-CI/CD pipeline generation and reusable CDK constructs, with typed DORA event emission.
+### Framework via `pnpm`
 
 ```bash
 pnpm add github:luicruz01/devex-platform#main \
   --filter @luicruz01/devex-framework
 ```
 
-> The framework lives in the `framework/` subdirectory of the monorepo.
+## Quick Start
 
-```typescript
-import { PrPipelineGenerator } from "@luicruz01/devex-framework";
-
-const yaml = new PrPipelineGenerator().generate({
-  work_id_pattern: "^[A-Z]+-\\d+$",
-  stack: "python-lambda-cdk",
-  team: "platform",
-  environments: ["sandbox", "staging", "production"],
-});
-```
-
-## Quick start
-
-### Step 1: Install the CLI
+### 1. Install the CLI
 
 ```bash
 uvx --from git+https://github.com/luicruz01/devex-platform#subdirectory=cli devex
 ```
 
-No global install or registry required — `uvx` fetches the CLI directly from the git repository.
-
-### Step 2: Initialize your project
+### 2. Run `devex init` in your service repository
 
 ```bash
-cd your-service
+cd your-service-repo
 devex init
 ```
 
-`devex init` detects your stack from signal files (`pyproject.toml`, `go.mod`, `package.json`, or `deps.edn`), writes `.devex/config.yaml` with team defaults, and installs `pre-commit` and `pre-push` git hooks that run `devex check` and your unit test suite before code leaves your machine.
+`devex init` detects the stack from signal files, writes `.devex/config.yaml`, and installs `pre-commit` and `pre-push` hooks.
 
-### Step 3: Create a branch
-
-```bash
-devex branch FIN-123 feat/your-feature
-```
-
-Every change must be tied to a Work ID (e.g. `FIN-123` from Jira or Linear). The branch is created as `FIN-123/feat/your-feature` and a `DoraEvent` is emitted. Manual `git checkout -b` bypasses this audit trail.
-
-### Step 4: Consume the Framework in your CDK stack
+### 3. Create a branch with a Work ID
 
 ```bash
-pnpm add github:luicruz01/devex-platform#main \
-  --filter @luicruz01/devex-framework
+devex branch WORK-123 feat/description
 ```
 
-> The framework lives in the `framework/` subdirectory of the monorepo.
+The CLI creates a branch named `WORK-123/feat/description` and emits a DORA event for branch creation.
+
+### 4. Add `LambdaServiceConstruct` to your CDK stack
 
 ```typescript
 import * as cdk from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { LambdaServiceConstruct } from "@luicruz01/devex-framework";
 
-export class MyStack extends cdk.Stack {
+export class ServiceStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string) {
     super(scope, id);
 
@@ -90,18 +122,18 @@ export class MyStack extends cdk.Stack {
     new LambdaServiceConstruct(this, "ApiHandler", {
       handlerPath: "handler.main",
       table,
-      workId: "FIN-123",
+      workId: "WORK-123",
     });
   }
 }
 ```
 
-`LambdaServiceConstruct` wires runtime, IAM grants, environment variables, and `devex:` resource tags in one call.
+`LambdaServiceConstruct` packages a Lambda handler with table access, environment wiring, timeout defaults, and `devex:` tags.
 
-### Step 5: Generate your pipelines
+### 5. Generate your pipelines with `PrPipelineGenerator`
 
 ```typescript
-import { writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { PrPipelineGenerator } from "@luicruz01/devex-framework";
 
 const config = {
@@ -118,81 +150,53 @@ writeFileSync(
 );
 ```
 
-The generated workflow validates the branch name, runs stack-specific tests and lint, performs API contract validation, and deploys to the sandbox environment on every pull request.
+The same configuration can be reused with `IntegrationPipelineGenerator` for mainline promotion workflows.
 
-## Supported stacks
+## Supported Stacks
 
-| Stack | Signal file | Test command | Lint command |
-|-------|-------------|--------------|--------------|
-| python-lambda-cdk | `pyproject.toml` | `pytest test/ -v` | `ruff check .` |
-| go | `go.mod` | `go test ./...` | `golangci-lint (planned)` |
-| typescript | `package.json` | `pnpm test` | `eslint .` |
-| clojure | `deps.edn` | `lein test` | `clj-kondo (planned)` |
+| Stack | Signal file | Test command | Lint |
+| --- | --- | --- | --- |
+| `python-lambda-cdk` | `pyproject.toml` | `pytest test/ -v` | `ruff check .` |
+| `go` | `go.mod` | `go test ./...` | `planned` |
+| `typescript` | `package.json` | `pnpm test` | `eslint .` |
+| `clojure` | `deps.edn` | `lein test` | `planned` |
 
-Stack detection runs automatically during `devex init` and drives both local checks and generated pipeline steps.
+## Analytics
 
-## DORA telemetry
+See `analytics/README.md` for the end-to-end analytics guide. The analytics packages are split by responsibility:
 
-Every CLI command and every pipeline stage emits a `DoraEvent` — a fixed-schema JSON object written to stdout and appended to `.devex/dora-events.jsonl`. Because the schema is identical across all teams and stacks, DORA metrics (deployment frequency, lead time, change failure rate, MTTR) are directly comparable between a Python Lambda team and a Go service team without post-processing.
+- `analytics/schema/` defines the `DoraEvent` v2 schema in Pydantic and Zod.
+- `analytics/collector/` runs a FastAPI collector Lambda that validates events and stores them in DynamoDB.
+- `analytics/warehouse/` computes deployment frequency, lead time for changes, change failure rate, and MTTR.
+- `analytics/agent/` runs the DORA Analyst flow that produces a weekly digest and risk flags.
+- `analytics/dashboard/` provides the Streamlit dashboard for team, overview, and adoption views.
 
-```json
-{
-  "version": "1.0",
-  "work_id": "FIN-123",
-  "team": "platform",
-  "stack": "python-lambda-cdk",
-  "stage": "check",
-  "environment": "local",
-  "status": "success",
-  "duration_ms": 142,
-  "timestamp": "2026-06-05T14:30:00Z"
-}
+Run the dashboard locally with:
+
+```bash
+cd analytics/dashboard && uv run streamlit run app.py
 ```
 
-Events flow from local CLI → GitHub Actions stdout → CloudWatch Logs, where the DORA Analyst agent aggregates them into team-level insights.
+## Test Coverage
 
-## AI agents
+| Package | Tests | Coverage |
+| --- | ---: | --- |
+| `cli/` | 15 | commands, config, Work ID validation |
+| `framework/` | 16 | pipelines, CDK construct, DORA types |
+| `analytics/schema/` | 8 | DoraEvent v1/v2 parsing and emission |
+| `analytics/collector/` | 24 | API endpoints, DynamoDB, enrichment |
+| `analytics/warehouse/` | 14 | DORA metrics computation |
+| `analytics/agent/` | 11 | LLM analysis, prompts, risk flags |
+| Total | 88 | - |
 
-**PR Reviewer (Amazon Q Developer)** — Runs automated code review on every pull request before a human reviewer is assigned. Flags security issues, convention violations (missing Work ID in PR title, wrong branch format), and missing `DoraEvent` emission in pipeline stages. Reduces platform team review load to escalations only.
+## Reference Adoption
 
-**Spec Validator (AWS Kiro)** — Validates architecture and design decisions before code is written. Steering files in `.kiro/steering/` encode golden-path rules; Kiro checks proposed designs against them during planning, catching structural mistakes at design time rather than in a PR comment thread.
-
-**DORA Analyst** — An LLM agent that reads the `DoraEvent` stream from CloudWatch and converts raw telemetry into actionable insights: deployment frequency trends, lead time regressions, and teams drifting from the golden path. Designed as a PoC; not yet wired to production data sources.
+[transactionify](https://github.com/luicruz01/transactionify) is the reference project that consumes this platform end to end.
 
 ## Architecture
 
-See [docs/adr.md](docs/adr.md) for the full architecture decision record, homologation strategy, scalability model, and shift-left approach.
+See [docs/adr.md](docs/adr.md) for the architecture decision record and current system model.
 
-```
-  Engineer machine          GitHub                    AWS
-  ─────────────────    ──────────────────────    ──────────────
-  devex CLI          → PR Pipeline (Framework) → sandbox
-  git hooks          → Integration Pipeline    → staging
-  .devex/config.yaml → Amazon Q PR Review      → production
-                     → DORA events → CloudWatch
-```
+## Contributing
 
-## Repository structure
-
-```
-devex-platform/
-├── cli/                          # Python CLI (devex)
-│   ├── src/devex_cli/
-│   │   ├── commands/             # init, branch, check commands
-│   │   ├── config/               # config.yaml resolution and stack detection
-│   │   ├── dora/                 # DORA event emitter (stdout + jsonl)
-│   │   └── hooks/                # pre-commit and pre-push git hooks
-│   ├── tests/                    # pytest suite (15 tests)
-│   └── pyproject.toml            # package definition and uv entry point
-├── framework/                    # TypeScript framework (@luicruz01/devex-framework)
-│   ├── src/
-│   │   ├── constructs/           # LambdaServiceConstruct CDK abstraction
-│   │   ├── dora/                 # DoraEvent types and DoraEmitter
-│   │   └── workflows/            # PrPipeline, IntegrationPipeline, StackDetector
-│   ├── tests/                    # vitest suite (16 tests)
-│   └── package.json
-├── docs/
-│   └── adr.md                    # Architecture Decision Record
-├── .cursor/rules/                # Cursor context rules for contributors
-└── .kiro/steering/               # Kiro steering files for AI agents
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow, coding standards, and review expectations.

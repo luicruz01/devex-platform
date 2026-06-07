@@ -1,0 +1,40 @@
+---
+description: Task startup, cross-package change planning, and validation expectations for devex-platform contributors.
+alwaysApply: true
+---
+# DevEx Change Workflow
+## Start every task this way
+1. Read `README.md` and `analytics/README.md` before making a cross-package change.
+2. Read `docs/adr.md` before changing architecture, package boundaries, or adoption guidance.
+3. Read `CONTRIBUTING.md` before changing public package behavior, adding a stack, or touching proposal-gated surfaces.
+4. Inspect the nearest implementation before creating new files: for CLI work start in `cli/src/devex_cli/main.py`, for framework work start in `framework/src/index.ts`, and for analytics work start in the package `main.py` or exported class.
+5. Prefer the smallest change that keeps package responsibilities intact.
+
+## What this is not
+- This is not permission to rewrite multiple packages because one package is easier to change.
+- This is not a prompt to normalize the code to documentation examples when the current code says something different.
+- This is not a license to widen a change from one package into schema or workflow contracts without explicit need.
+
+## Plan cross-package changes explicitly
+- If you change telemetry fields, plan updates across `analytics/schema/python/dora_event.py`, `framework/src/dora/types.ts`, `cli/src/devex_cli/dora/emitter.py`, and any inline JSON emitters in `framework/src/workflows/*.ts`.
+- If you add a supported stack, update every current touchpoint: `framework/src/workflows/stack-detector.ts`, `framework/src/workflows/pr-pipeline.ts`, `cli/src/devex_cli/commands/check.py`, and the supported stacks table in `README.md`.
+- If you change local bootstrap behavior, inspect both `cli/src/devex_cli/commands/init.py` and `cli/src/devex_cli/hooks/pre-commit` plus `cli/src/devex_cli/hooks/pre-push`.
+- If you change analytics storage or query keys, inspect both `analytics/collector/src/collector/store.py` and `analytics/warehouse/src/warehouse/queries.py`.
+
+## Validation before considering work complete
+- Run `cd cli && uv run pytest tests/ -v` after CLI changes.
+- Run `cd framework && pnpm test` after framework changes.
+- Run `cd analytics/schema/python && uv run pytest` after schema changes.
+- Run `cd analytics/collector && uv run pytest tests/ -v` after collector changes.
+- Run `cd analytics/warehouse && uv run pytest tests/ -v` after warehouse changes.
+- Run `cd analytics/agent && uv run pytest tests/ -v` after agent changes.
+- Use the current README test-count baseline as a regression check: the repository documents 88 tests across packages.
+
+## Proposal-gated surfaces
+- Open a `[PROPOSAL]` issue before changing the `DoraEvent` schema, the `LambdaServiceConstruct` API, adding a new CLI command, changing the `.devex/config.yaml` shape, or reordering the PR pipeline stages described in `CONTRIBUTING.md`.
+
+## DO NOT
+- DO NOT edit only one side of a shared contract when the same concept is encoded in multiple packages.
+- DO NOT add new stack support in `framework/src/workflows/stack-detector.ts` without also extending `framework/src/workflows/pr-pipeline.ts` and `cli/src/devex_cli/commands/check.py`.
+- DO NOT add new DynamoDB key shapes in `analytics/collector/src/collector/store.py` without checking the query code in `analytics/warehouse/src/warehouse/queries.py`.
+- DO NOT add new logic to the duplicate tracked files `analytics/collector/src/collector/config 2.py`, `enricher 2.py`, `main 2.py`, or `store 2.py`; keep the canonical non-space filenames authoritative or remove duplicates deliberately in the same change.

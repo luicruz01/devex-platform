@@ -1,0 +1,48 @@
+---
+description: Repository map, package boundaries, and current operating model for devex-platform.
+alwaysApply: true
+---
+# DevEx Platform Overview
+## What this repository is
+`devex-platform` publishes reusable packages that other repositories consume. The current repository has two enforcement packages in `cli/` and `framework/`, plus five analytics packages in `analytics/` that validate, ingest, compute, analyze, and visualize `DoraEvent` telemetry.
+
+## What this is not
+- It is not a single deployed service with one runtime entrypoint.
+- It is not a monolith where cross-package imports are always acceptable.
+- It is not a frontend application; `analytics/dashboard/app.py` is a Streamlit demo shell, not the repository's primary product.
+- It is not a database migration repository; the analytics data model is encoded in `analytics/schema/` and the DynamoDB access code in `analytics/collector/` and `analytics/warehouse/`.
+
+## Package boundaries
+- Keep `cli/` Python-only. DO NOT add TypeScript source or AWS SDK usage under `cli/src/devex_cli/`.
+- Keep `framework/` TypeScript-only. DO NOT add Python modules or boto3 usage under `framework/src/`.
+- Keep `analytics/schema/` focused on `DoraEvent` contracts in `analytics/schema/python/dora_event.py` and the TypeScript schema package. DO NOT add metric math or HTTP handlers there.
+- Keep `analytics/collector/` focused on ingestion through `collect_event()` in `analytics/collector/src/collector/main.py`, enrichment in `EventEnricher`, and persistence in `EventStore`. DO NOT add DORA metric computation there.
+- Keep `analytics/warehouse/` focused on queries in `EventQueryService` and calculations in `DoraMetricsEngine`. DO NOT add FastAPI routes or LLM calls there.
+- Keep `analytics/agent/` focused on report interpretation in `DoraAnalyst` and `handler()` in `analytics/agent/src/agent/main.py`. DO NOT instantiate boto3 directly anywhere under `analytics/agent/src/agent/`.
+- Keep `analytics/dashboard/` focused on Streamlit composition in `analytics/dashboard/app.py`. DO NOT move metric computation or DynamoDB access into the dashboard package.
+
+## Current package map
+```text
+README.md                    - Top-level repository overview, install commands, and package summary.
+CONTRIBUTING.md              - Proposal rules, stack-addition workflow, and review requirements.
+docs/adr.md                  - Current architecture decision record for the shared ecosystem.
+cli/                         - Python CLI package exposing `devex init`, `devex branch`, and `devex check`.
+framework/                   - TypeScript package exporting workflow generators, DORA types, and `LambdaServiceConstruct`.
+analytics/schema/            - Shared `DoraEvent` contract in Python and TypeScript.
+analytics/collector/         - FastAPI collector package with enrichment and DynamoDB persistence.
+analytics/warehouse/         - Query layer and metrics engine for the four DORA metrics.
+analytics/agent/             - Claude-backed analyst package and scheduled handler.
+analytics/dashboard/         - Streamlit dashboard that renders overview, team detail, and adoption pages.
+.cursor/rules/               - Cursor rules that should match the current repository state.
+.kiro/steering/              - Parallel agent guidance for Kiro.
+```
+
+## Contract-sensitive files
+- Treat `analytics/schema/python/dora_event.py`, `framework/src/dora/types.ts`, `cli/src/devex_cli/dora/emitter.py`, and `framework/src/dora/emitter.ts` as shared telemetry files.
+- Treat `framework/src/workflows/pr-pipeline.ts` and `framework/src/workflows/integration-pipeline.ts` as contract-sensitive because they emit raw DORA JSON strings in generated workflow YAML.
+- Treat `cli/src/devex_cli/config/loader.py` and `cli/src/devex_cli/commands/init.py` as setup-critical because they define stack detection, default config, and hook installation behavior.
+
+## DO NOT
+- DO NOT treat `analytics/collector/src/collector/main.py` as the analytics API for this repository; it is one installable package among several.
+- DO NOT move cross-package business logic into `analytics/schema/python/dora_event.py`.
+- DO NOT add new contributor guidance that contradicts `README.md`, `analytics/README.md`, `docs/adr.md`, or `CONTRIBUTING.md` without updating those files too.

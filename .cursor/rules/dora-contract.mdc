@@ -1,0 +1,43 @@
+---
+description: Shared DoraEvent contract rules across the CLI, framework, and analytics packages.
+alwaysApply: true
+---
+# DoraEvent Contract
+## What this contract is
+`DoraEvent` is the shared telemetry shape that ties together the CLI, generated workflows, collector, warehouse, and analyst. The canonical Python contract lives in `analytics/schema/python/dora_event.py`, and the framework carries a narrower TypeScript representation in `framework/src/dora/types.ts`.
+
+## What this is not
+- It is not a package-local convenience type.
+- It is not safe to change in only one language or one emitter.
+- It is not limited to CLI events; workflow generators and analytics packages depend on it too.
+
+## Files that must stay aligned
+- `analytics/schema/python/dora_event.py` defines `DoraEventV1`, `DoraEventV2`, `DoraStage`, `DoraEnvironment`, `DoraStatus`, `parse_event()`, and `emit_event()`.
+- `framework/src/dora/types.ts` defines the framework-facing TypeScript event type.
+- `cli/src/devex_cli/dora/emitter.py` builds and emits CLI events, then appends them to `.devex/dora-events.jsonl`.
+- `framework/src/dora/emitter.ts` emits framework-side JSON when it is used directly.
+- `framework/src/workflows/pr-pipeline.ts` and `framework/src/workflows/integration-pipeline.ts` emit raw JSON strings in generated GitHub Actions YAML and must stay consistent with the schema.
+
+## Valid stage values
+- Use only these stage values from `analytics/schema/python/dora_event.py`: `init`, `branch-create`, `check`, `pr-pipeline`, `deploy-sandbox`, `deploy-staging`, `deploy-production`, `integration-pipeline`, `collect`, and `analyze`.
+- Notice the current mismatch: `framework/src/dora/types.ts` includes the first eight values but does not include `collect` or `analyze`. Do not widen or narrow either side accidentally.
+
+## Valid environment values
+- Use only `sandbox`, `staging`, `production`, and `local`.
+
+## Valid status values
+- Use only `success` and `failure`.
+
+## Emission rules
+- Emit single-line JSON only. `analytics/schema/python/dora_event.py::emit_event()` uses `model_dump_json()`, and `cli/src/devex_cli/dora/emitter.py` falls back to `json.dumps(event)` for plain dicts.
+- Emit through the existing emitter when possible. CLI code should go through `DoraEmitter.emit()` in `cli/src/devex_cli/dora/emitter.py`.
+- Keep CLI append behavior intact: `cli/src/devex_cli/dora/emitter.py` writes emitted events to `.devex/dora-events.jsonl`.
+- Keep workflow emitters stdout-only: the YAML in `framework/src/workflows/*.ts` writes JSON with `echo`.
+- Set `failure_reason` whenever a failure path knows the cause.
+- Keep `work_id` non-empty. Use `N/A` only for pre-branch cases like `cli/src/devex_cli/commands/init.py` and `cli/src/devex_cli/commands/check.py`.
+
+## DO NOT
+- DO NOT add or remove `DoraEvent` fields without updating both the schema definition and every emitter that serializes raw JSON.
+- DO NOT change the version discriminator in `analytics/schema/python/dora_event.py` without updating `framework/src/workflows/pr-pipeline.ts`, `framework/src/workflows/integration-pipeline.ts`, and `cli/src/devex_cli/dora/emitter.py`.
+- DO NOT pretty-print telemetry JSON.
+- DO NOT invent new stage, environment, or status values outside the literals defined in `analytics/schema/python/dora_event.py` and `framework/src/dora/types.ts`.

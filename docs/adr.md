@@ -1,95 +1,127 @@
 # Architecture Decision Record
 
-## devex-platform — Golden Path Ecosystem
+## devex-platform Shared Ecosystem
 
-**Date:** June 2026  
-**Author:** Luis Cruz  
-**Status:** Accepted
+**Date:** 2026-06-06  
+**Author:** Luis Alberto Cruz  
+**Status:** Accepted  
+**Scope:** Current repository state only
 
-## Context
+## Context and Problem Statement
 
-Ten or more independent engineering teams need to operate under the same conventions — branch naming, commit messages, pipeline stages, infrastructure patterns — and report comparable DORA metrics, without a platform team becoming a bottleneck for every custom request. Today each team invents its own hooks, YAML, and CDK patterns, making cross-team measurement impossible and platform support unsustainable.
+The platform must standardize delivery across 10+ service teams without taking ownership of every repository. If each team defines its own branch rules, CI stages, infrastructure patterns, and telemetry, the result is local autonomy but no shared operating model, no comparable DORA metrics, and a permanent platform support burden. If the platform centralizes all implementation, teams lose delivery speed and the platform becomes a bottleneck.
 
-The solution is a two-component ecosystem: a **CLI** (`devex`) for local enforcement on engineer machines, and a **Framework** (`@luicruz01/devex-framework`) for CI/CD pipeline generation and reusable CDK constructs. Both share a single integration contract — the **Work ID** — and a fixed **DoraEvent** telemetry schema, so behavior and metrics are consistent regardless of language stack.
+`devex-platform` resolves that tension by standardizing a small set of reusable primitives while leaving service code with each team. The current repository contains a Python CLI, a TypeScript framework, a shared telemetry schema, a collector, a warehouse metrics engine, an LLM analyst, and a Streamlit dashboard demo, backed by 88 passing tests.
 
-## 1. Architecture
+## 1. Architecture Diagram: How CLI and Framework Create a Shared Ecosystem
 
-The CLI runs on engineer machines. It enforces conventions locally: Work ID validation on branches and commits, git hook installation, and standards checks via `devex check`. Config resolves in priority order: CLI argument → `DEVEX_WORK_ID` environment variable → `.devex/config.yaml`.
+The CLI and Framework do not call each other directly at runtime. They interact through shared conventions: the same `work_id`, the same environment model, and the same `DoraEvent` schema. That contract lets many services behave consistently without a central orchestration service.
 
-The Framework runs in CI/CD. It generates typed GitHub Actions workflows (`PrPipelineGenerator`, `IntegrationPipelineGenerator`) and provides CDK constructs (`LambdaServiceConstruct`) that abstract infrastructure patterns with built-in tagging and DORA emission.
+```text
+                       Per-service repository owned by each team
 
-The Work ID is the integration contract. It threads through branch name → commit message → PR title → pipeline environment variable → DORA event, creating a complete audit trail from code change to deployment.
-
-Three AI agents augment the ecosystem:
-
-- **PR Reviewer (Amazon Q)** — automated code review on every PR
-- **Spec Validator (Kiro)** — validates designs before code is written
-- **DORA Analyst** — converts event streams into actionable insights
-
+  Developer laptop                               GitHub Actions / AWS
+  -----------------                              --------------------
+  devex init                                      PrPipelineGenerator
+  devex branch  ---------- work_id ----------->   IntegrationPipelineGenerator
+  devex check                                     LambdaServiceConstruct
+  git hooks                                       GitHub Environments
+  .devex/config.yaml                              sandbox -> staging -> production
+        |                                                  |
+        +---------------- emits DoraEvent -----------------+
+                               |
+                               v
+                 analytics/schema (Pydantic + Zod contract)
+                               |
+                               v
+        analytics/collector (FastAPI + Mangum + enrichment + validation)
+                               |
+                               v
+                     DynamoDB single table event store
+                               |
+                 +-------------+-------------+
+                 |                           |
+                 v                           v
+   analytics/warehouse               analytics/dashboard
+   DF, LT, CFR, MTTR                 adoption and team views
+                 |
+                 v
+         analytics/agent
+   weekly digest and risk flags
 ```
-[Engineer] → devex branch FIN-123 → git hooks → PR
-                                                  ↓
-[Framework] generates ←→ PR Pipeline → sandbox deploy
-                                     → DORA event → CloudWatch
-                                                         ↓
-[DORA Analyst] ←───────────────────────────── event stream
-```
 
-## 2. Homologation — ensuring 10+ teams adopt the ecosystem
+The CLI standardizes local behavior through `devex init`, `devex branch`, and `devex check`. The Framework standardizes CI/CD and infrastructure through workflow generators and `LambdaServiceConstruct`. `analytics/schema` is the interoperability layer, and the remaining analytics packages close the loop from event validation to metrics, analysis, and reporting. This creates a shared ecosystem because every team adopts the same delivery vocabulary while keeping control of its own repository and business code.
 
-**a) Convention over configuration.** `devex init` generates everything a team needs in one command: `.devex/config.yaml`, git hooks, and stack detection. The path of least resistance is the golden path — teams do not configure; they adopt.
+## 2. Homologation: How 10+ Teams Adopt CLI and Framework
 
-**b) Installable from git — no registry required.**
+The adoption problem is economic, not technical. Teams adopt
+tools when the cost of non-adoption exceeds the cost of
+adoption. The design addresses this at four levels.
 
-```bash
-uvx --from git+https://github.com/luicruz01/devex-platform#subdirectory=cli devex
-pnpm add github:luicruz01/devex-platform#main
-```
+**Zero-friction onboarding.** `devex init` detects the stack
+from signal files (`pyproject.toml`, `go.mod`, `package.json`,
+`deps.edn`), writes `.devex/config.yaml`, and installs
+`pre-commit` and `pre-push` hooks in under 10 seconds.
+A new engineer gets the full golden path before their first
+commit without reading documentation.
 
-Zero infrastructure to maintain for distribution. Works in air-gapped environments with git access. Version pinning via git SHA.
+**Visible cost of divergence.** The DORA dashboard makes
+adoption measurable. A team that bypasses `devex branch`
+produces `work_id='N/A'` events — their lead time metric
+degrades visibly relative to peers. Compliance is enforced
+by metrics, not by the platform team.
 
-**c) Escape hatches without forking.** `PrPipelineGenerator` accepts pre-hooks and post-hooks. Teams extend behavior without modifying platform code. Pipeline stages are fixed (validate → test → contract-validation → deploy); the steps within stages are flexible.
+**Configurable, not prescriptive.** Work ID pattern,
+environments, and team name live in `.devex/config.yaml`.
+A team using Linear instead of Jira changes one regex.
+The platform does not need to be involved.
 
-**d) Context engineering.** Every repo gets `.cursor/rules/` and `.kiro/steering/` files. New engineers receive platform guidance from their IDE and spec-validation agents — no onboarding sessions required. Knowledge travels with the repository.
+**Context travels with the repository.** `.cursor/rules/`
+and `.kiro/steering/` files encode platform conventions into
+the development environment. New engineers receive guidance
+from their IDE and spec-validation agent — platform mentoring
+at zero marginal cost per engineer onboarded.
 
-## 3. Scalability — avoiding platform team bottleneck
+## 3. Scalability: How the Platform Team Avoids Becoming a Bottleneck
 
-**a) Inner-source model.** Teams propose changes via GitHub Issues (`[PROPOSAL]` prefix). The platform team approves proposals, not implementations. Teams own their PRs; platform reviews and merges, never rewrites.
-
-**b) AI agents as first-level support.** Amazon Q reviews every PR before a human does. Kiro validates designs before code is written. The platform team only sees issues that AI could not resolve — security escalations, schema changes, and architectural disputes.
-
-**c) Typed escape hatches.** `LambdaServiceConstruct` accepts additional environment variables via the `environment` prop and runtime overrides via the `timeout` prop — teams extend behavior without modifying platform constructs. `PipelineConfig` is designed for extension via additional fields in a future version; teams needing custom steps today fork the generated YAML locally, which the platform team tracks as a known gap.
+The platform team avoids the bottleneck by owning primitives instead of per-team implementations. The CLI removes repeated repo setup, the Framework removes hand-authored pipeline scaffolding, and the schema package prevents contract drift. The analytics path is also chosen for low coordination cost: DynamoDB single-table storage avoids cross-team schema migration work, and the metrics engine stays in pure Python instead of requiring warehouse infrastructure. The platform team therefore owns releases, contract evolution, and metric definitions; service teams own day-2 delivery inside the paved road.
 
 ## 4. Shift-Left Strategy
 
-Defect detection moves earlier through four layers:
+The shift-left strategy is implemented as a chain of earlier, cheaper feedback loops:
 
-**Layer 1 — Design time (earliest).** Kiro steering files validate architecture decisions before a single line of code is written. A team proposing a raw Lambda instead of `LambdaServiceConstruct` gets corrected during design review, not in a PR comment.
+| Stage | Mechanism in repo | Failure caught early |
+| --- | --- | --- |
+| Repo bootstrap | `devex init` stack detection and config generation | missing platform setup before the first PR |
+| Local authoring | `devex branch` | missing or invalid `work_id` before branch creation |
+| Local validation | `devex check` and git hooks | invalid branch, invalid commit message, and lint failures before push |
+| Pull request CI | `PrPipelineGenerator` | branch policy violations, test failures, contract issues, and sandbox deploy failures before merge |
+| Mainline CI | `IntegrationPipelineGenerator` + GitHub Environments | promotion failures before production rollout |
+| Telemetry ingest | FastAPI + Pydantic validation in collector | malformed events rejected synchronously with HTTP 422 instead of corrupting downstream metrics |
+| Analytics | warehouse + agent + dashboard | regression visibility, risk flags, and adoption drift before the next planning cycle |
 
-**Layer 2 — Commit time.** The `pre-commit` hook runs `devex check` — Work ID validation, lint, commit message format. Defects caught in seconds on the engineer's machine.
+Shift-left here starts at repository setup, continues through local and CI validation, and ends with rejecting invalid telemetry before it pollutes downstream metrics.
 
-**Layer 3 — Push time.** The `pre-push` hook runs the full unit test suite locally. Integration failures caught before reaching GitHub.
+## Key Decisions
 
-**Layer 4 — PR time.** The PR Pipeline runs tests, API contract validation, and sandbox deploy. Amazon Q reviews for security and convention violations. Lead time is measured from branch creation to sandbox deploy.
+| Decision | Chosen option | Rejected alternative | Reason |
+| --- | --- | --- | --- |
+| Event storage | DynamoDB single-table | RDS | Telemetry is append-heavy, query patterns are predictable, and avoiding schema migrations matters more than relational flexibility at this stage. |
+| Event ingestion | FastAPI + Mangum | Kinesis-first ingestion | HTTP ingestion gives synchronous validation, local testability, and immediate HTTP 422 responses for bad events. |
+| Workflow generation | TypeScript template literals | `github-actions-workflow-ts` | Readable emitted YAML is easier for teams to inspect and debug than an abstraction optimized for compile-time safety. |
+| Shared contract | Pydantic + Zod | JSON Schema only | Native runtime validation in Python and TypeScript is simpler for producers and consumers than maintaining schema generation toolchains. |
+| Metrics engine | Pure Python | dbt | The repository needs deterministic, unit-tested metrics logic without warehouse infrastructure dependencies. |
+| Delivery model | Trunk-based development + GitHub Environments | branch-per-environment | Promotion through environments keeps release flow simple and avoids long-lived environment branches. |
 
-The result: a defect introduced at 9:00 AM is caught by 9:01 AM (pre-commit), not at 2:00 PM when a reviewer finds it in GitHub.
+## PoC vs. Production Gaps
 
-## Key technical decisions
+| Area | Proven in repository | Not production-ready yet |
+| --- | --- | --- |
+| Local developer workflow | CLI commands, hooks, config loading, and DORA emission are implemented and tested | Adoption across service repos is still package-by-package, not centrally rolled out |
+| CI/CD standardization | PR and integration workflow generators exist and emit deploy stages and DORA events | AWS OIDC roles are not provisioned; current state is `cdk synth`, not deployed pipelines |
+| Telemetry contract | Versioned `DoraEventV1` and `DoraEventV2` schemas exist in Python and TypeScript | The collector is not deployed to AWS, so ingestion is not live |
+| Metrics and intelligence | Warehouse computes deployment frequency, lead time, change failure rate, and MTTR; agent generates analysis and risk flags | The analyst Lambda requires `ANTHROPIC_API_KEY` and is not operational without that secret |
+| Visualization and adoption reporting | Streamlit dashboard demonstrates overview, team detail, and adoption views | Dashboard uses mock data for demo mode, not a live production feed |
+| AI-assisted review | The architecture anticipates Amazon Q in the PR path | Amazon Q is not wired to live pull requests in this repository |
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Branching strategy | Trunk-based + GitHub Environments | Industry standard; eliminates long-lived branches; GitHub environment protection handles approval gates |
-| Pipeline generation | TypeScript template literals | Type-safe; no YAML library dependency; readable output teams can inspect |
-| DORA telemetry | Structured JSON to stdout | CloudWatch ingests from logs automatically; same schema works for all stacks |
-| Distribution | git-based (uv + pnpm) | No registry infrastructure; works in air-gapped environments; version pinning via git SHA |
-| Work ID | Configurable regex pattern | Works with any tracker (Jira, Linear, GitHub Issues) without platform team changes |
-
-## What this PoC demonstrates vs production gaps
-
-| Demonstrated | Production gaps (known, intentional for PoC scope) |
-|--------------|---------------------------------------------------|
-| CLI installable and functional via `uvx` | AWS OIDC roles not provisioned (`cdk synth`, not `cdk deploy`) |
-| Framework generates valid GitHub Actions YAML | Amazon Q integration is architectural — not wired to live PRs |
-| CDK synth passes with `LambdaServiceConstruct` | DORA Analyst agent designed, not implemented |
-| DORA events emitted with correct schema | No package registry — git-based install only |
-| Context layer (Cursor rules + Kiro steering) in place | `PipelineConfig` extension hooks (`pre_steps`/`post_steps`) not yet implemented |
+This ADR records a multi-package platform PoC with working local workflow, CI/CD generators, telemetry contracts, metrics logic, and demo reporting. The remaining gaps are deployment, live integrations, and operational hardening.

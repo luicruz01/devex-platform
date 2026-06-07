@@ -1,0 +1,46 @@
+---
+description: Package responsibilities and operational boundaries across schema, collector, warehouse, agent, and dashboard.
+alwaysApply: false
+globs:
+  - analytics/**
+---
+# Analytics Layer Rules
+## What this package set is
+The analytics layer turns `DoraEvent` telemetry into reports through five packages: `analytics/schema/` defines the contract, `analytics/collector/` ingests and stores events, `analytics/warehouse/` computes metrics, `analytics/agent/` generates narrative analysis, and `analytics/dashboard/` renders a demo UI.
+
+## What this is not
+- It is not one Python service with a single dependency graph.
+- It is not a place to blur ingestion, query, metric, and LLM responsibilities together.
+- It is not a live production dashboard; `analytics/dashboard/app.py` runs from mock data imports today.
+
+## Schema package rules
+- Keep `analytics/schema/python/dora_event.py` responsible for `DoraEventV1`, `DoraEventV2`, `parse_event()`, and `emit_event()`.
+- Keep `emit_event()` in `analytics/schema/python/dora_event.py` emitting single-line JSON through `model_dump_json()`.
+- Keep `model_config = ConfigDict(extra="forbid")` on both schema versions unless you are deliberately changing the contract.
+
+## Collector package rules
+- Keep `collect_event()` in `analytics/collector/src/collector/main.py` responsible for validation, enrichment, persistence, and returning `202`.
+- Keep enrichment in `analytics/collector/src/collector/enricher.py`; `EventEnricher.enrich()` should return a copy and set `correlation_id` from `work_id` when missing.
+- Keep persistence in `analytics/collector/src/collector/store.py`; `EventStore.save()` owns the DynamoDB item shape, GSIs, and `ttl = now + 90 days`.
+- Treat `analytics/collector/src/collector/__init__.py`, `config.py`, `enricher.py`, `main.py`, and `store.py` as the canonical module set. The tracked `* 2.py` duplicates are not a second feature surface.
+
+## Warehouse package rules
+- Keep `DoraMetricsEngine` in `analytics/warehouse/src/warehouse/metrics.py` as the only home for deployment frequency, lead time, change failure rate, MTTR, and overall rating logic.
+- Keep DynamoDB access inside `EventQueryService` in `analytics/warehouse/src/warehouse/queries.py`.
+- Keep warehouse queries on `table.query(...)`; the current code does not use `scan()` and new query paths should preserve that.
+
+## Agent package rules
+- Keep the scheduled entrypoint in `analytics/agent/src/agent/main.py::handler`.
+- Keep the Anthropic client setup in `analytics/agent/src/agent/analyst.py::DoraAnalyst.__init__`.
+- Keep `dry_run` behavior in `analytics/agent/src/agent/main.py`: generate the `DoraReport`, emit the `analyze` event, skip the Claude call, and return the raw report payload.
+- Keep risk flag thresholds aligned with the current implementation in `analytics/agent/src/agent/analyst.py`: CFR over 15, lead time over 168h, MTTR over 24h, or deployments per week under 1.
+
+## Dashboard package rules
+- Keep `analytics/dashboard/app.py` as a thin Streamlit entrypoint that selects a page and delegates to `render_overview`, `render_team_detail`, and `render_adoption`.
+- Keep dashboard data sourcing explicit; the current file imports `MOCK_REPORTS` and `MOCK_ANALYST_RESULTS` and labels the source as mock demo mode.
+
+## DO NOT
+- DO NOT add boto3 imports anywhere under `analytics/agent/src/agent/`.
+- DO NOT add FastAPI routes to `analytics/warehouse/src/warehouse/`.
+- DO NOT add DORA metric calculations to `analytics/collector/src/collector/` or `analytics/dashboard/`.
+- DO NOT update only one of `analytics/collector/src/collector/main.py` and `analytics/collector/src/collector/main 2.py` if you decide to keep the duplicate tracked files; keep them identical or delete the duplicate deliberately in the same change.

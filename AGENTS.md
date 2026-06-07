@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [devex-platform] recent context, 2026-06-05 6:39pm CST
+# [devex-platform] recent context, 2026-06-06 9:35pm CST
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 11 obs (6,212t read) | 199,773t work | 97% savings
+Stats: 25 obs (13,272t read) | 514,605t work | 97% savings
 
 ### Jun 5, 2026
 75 1:17p 🔵 devex-platform repository structure enumerated for code review
@@ -21,6 +21,21 @@ Stats: 11 obs (6,212t read) | 199,773t work | 97% savings
 93 " 🔵 pre-push hook bug: devex check failure does not abort push; echo masks pytest failure as exit 0
 94 " 🔵 Challenge PDF requirements read — devex-platform exceeds required scope; github-actions-workflow-ts dependency listed but not used
 100 " 🔵 CONTRIBUTING.md code style rule explicitly requires DORA failure event emission — directly contradicts branch.py implementation
+### Jun 6, 2026
+246 9:15p ✅ devex-platform docs/adr.md rewritten to reflect current repository state
+248 9:17p ✅ docs/adr.md fully rewritten from source — 1,514 words, grounded in actual code
+251 9:18p ✅ docs/adr.md prose tightened — 1,514 words condensed to 1,158 for PDF density
+254 9:20p ✅ docs/adr.md Homologation section expanded with 4-level adoption economics framework
+255 9:22p ✅ devex-platform root README.md fully rewritten
+256 9:24p 🔵 analytics/collector has duplicate " 2" files tracked in git
+257 " 🔵 DoraMetricsEngine computes all 4 DORA metrics from DynamoDB event stream
+258 " 🔵 DORA Analyst uses string heuristics to extract structured fields from LLM output
+259 " 🔵 CLI lint implementation gap: go and clojure return "skipped" always
+268 9:25p ✅ devex-platform README.md fully rewritten with new structure and content
+269 9:27p 🔵 Integration pipeline DORA emission hardcodes "success" status even on failure paths
+270 9:28p 🟣 devex-platform analytics/README.md creation task issued to Codex
+271 9:29p 🔵 devex-platform analytics layer — full implementation audit confirms architectural details and edge cases
+273 " ✅ analytics/README.md created — technical reference for all five analytics packages
 
-Access 200k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 515k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
