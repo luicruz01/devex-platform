@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  dashboard:
+    image: python:3.11-slim
+    container_name: devex-dashboard
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ../schema/python:/deps/devex-schema
+      - ../warehouse:/deps/devex-warehouse
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app:/deps/devex-schema:/deps/devex-warehouse/src
+    command: >
+      sh -c "pip install streamlit plotly pandas pydantic &&
+             streamlit run app.py --server.port=8501
+             --server.address=0.0.0.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
