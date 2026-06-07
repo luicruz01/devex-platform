@@ -177,6 +177,12 @@ Run the dashboard locally with:
 cd analytics/dashboard && uv run streamlit run app.py
 ```
 
+## Known gaps
+
+- PR title Work ID enforcement requires a GitHub branch protection ruleset or webhook — the CLI enforces branch name and commit message format only.
+- Property-based testing (PBT) at the unit level is not implemented. API contract validation via schemathesis runs in the PR pipeline.
+- Go and Clojure lint steps are planned but not yet implemented in the CLI or generated pipelines.
+
 ## Test Coverage
 
 | Package | Tests | Coverage |

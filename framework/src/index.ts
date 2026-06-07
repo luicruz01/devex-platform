@@ -1,5 +1,6 @@
 export { DoraEmitter } from "./dora/emitter.js";
 export type { DoraEvent, DoraStage, DoraStatus, DoraEnvironment } from "./dora/types.js";
+export type { DoraEventV2, AnyDoraEvent } from "./dora/types.js";
 export { StackDetector } from "./workflows/stack-detector.js";
 export type { SupportedStack } from "./workflows/stack-detector.js";
 export { PrPipelineGenerator } from "./workflows/pr-pipeline.js";

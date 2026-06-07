@@ -123,5 +123,7 @@ Shift-left here starts at repository setup, continues through local and CI valid
 | Metrics and intelligence | Warehouse computes deployment frequency, lead time, change failure rate, and MTTR; agent generates analysis and risk flags | The analyst Lambda requires `ANTHROPIC_API_KEY` and is not operational without that secret |
 | Visualization and adoption reporting | Streamlit dashboard demonstrates overview, team detail, and adoption views | Dashboard uses mock data for demo mode, not a live production feed |
 | AI-assisted review | The architecture anticipates Amazon Q in the PR path | Amazon Q is not wired to live pull requests in this repository |
+| PR title Work ID enforcement | CLI validates branch name and commit message | PR title validation requires GitHub ruleset or webhook — outside CLI scope |
+| Property-based testing (PBT) | API contract validation via schemathesis in PR pipeline | Unit-level PBT not implemented — identified as next iteration for service-level test suites |
 
 This ADR records a multi-package platform PoC with working local workflow, CI/CD generators, telemetry contracts, metrics logic, and demo reporting. The remaining gaps are deployment, live integrations, and operational hardening.

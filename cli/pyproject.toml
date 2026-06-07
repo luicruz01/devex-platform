@@ -21,6 +21,14 @@ dev = [
     "pytest-cov",
 ]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+  ".devex/",
+  "tests/",
+  "*.jsonl",
+  "*.yaml",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/devex_cli"]
 

@@ -122,8 +122,16 @@ jobs:
       - name: Emit DORA event
         run: |
           WORK_ID=$(echo "\${{ github.event.head_commit.message }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          STATUS="success"
+          if [ "\${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          FAILURE_REASON=""
+          if [ "$STATUS" = "failure" ]; then
+            FAILURE_REASON=",\"failure_reason\":\"pipeline-step-failed\""
+          fi
           DURATION=$(( (SECONDS - \${JOB_START:-0}) * 1000 ))
-          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"integration-pipeline\",\"environment\":\"production\",\"status\":\"success\",\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+          echo "{\"version\":\"2.0\",\"work_id\":\"$WORK_ID\",\"team\":\"${config.team}\",\"stack\":\"${config.stack}\",\"stage\":\"integration-pipeline\",\"environment\":\"production\",\"status\":\"$STATUS\"$FAILURE_REASON,\"duration_ms\":$DURATION,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 `;
   }
 }

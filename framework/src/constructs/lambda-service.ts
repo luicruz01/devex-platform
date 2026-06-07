@@ -5,7 +5,7 @@ import { Tags, Duration } from "aws-cdk-lib";
 export interface LambdaServiceProps {
   handlerPath: string;
   codePath?: string;
-  runtime?: string;
+  runtime?: lambda.Runtime;
   tableNameEnvVar?: string;
   table: any;
   timeout?: number;
@@ -24,7 +24,7 @@ export class LambdaServiceConstruct extends Construct {
     const tableNameEnvVar = props.tableNameEnvVar ?? "TABLE_NAME";
 
     this.function = new lambda.Function(this, "Function", {
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: props.runtime ?? lambda.Runtime.PYTHON_3_9,
       code: lambda.Code.fromAsset(codePath),
       handler: props.handlerPath,
       environment: {
