@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [devex-platform] recent context, 2026-06-06 9:35pm CST
+# [devex-platform] recent context, 2026-06-07 10:22am CST
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 25 obs (13,272t read) | 514,605t work | 97% savings
+Stats: 31 obs (15,712t read) | 622,661t work | 97% savings
 
 ### Jun 5, 2026
 75 1:17p 🔵 devex-platform repository structure enumerated for code review
@@ -36,6 +36,12 @@ Stats: 25 obs (13,272t read) | 514,605t work | 97% savings
 270 9:28p 🟣 devex-platform analytics/README.md creation task issued to Codex
 271 9:29p 🔵 devex-platform analytics layer — full implementation audit confirms architectural details and edge cases
 273 " ✅ analytics/README.md created — technical reference for all five analytics packages
+275 9:36p 🟣 devex-platform Cursor rules specification — 6 MDC files with strict package boundaries
+276 " 🔵 devex-platform existing .cursor/rules/ has only 2 stale files — full replacement confirmed
+277 " 🔵 analytics/collector/src/collector/ contains duplicate files with " 2" suffix
+278 9:37p 🔵 Framework integration-pipeline.ts final emit-dora job still hardcodes "status":"success" — partially fixed defect confirmed
+279 " 🔵 LambdaServiceProps.workId is optional in code — contradicts Cursor rules spec that listed it as required
+280 " 🔵 Python DoraStage has 10 values; TypeScript types.ts has 8 — "collect" and "analyze" missing from TypeScript
 
-Access 515k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 623k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
