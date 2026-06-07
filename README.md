@@ -161,21 +161,48 @@ The same configuration can be reused with `IntegrationPipelineGenerator` for mai
 | `typescript` | `package.json` | `pnpm test` | `eslint .` |
 | `clojure` | `deps.edn` | `lein test` | `planned` |
 
-## Analytics
+## Analytics — DevEx Intelligence
 
-See `analytics/README.md` for the end-to-end analytics guide. The analytics packages are split by responsibility:
+The analytics layer turns `DoraEvent` telemetry into
+measurable engineering outcomes across all teams.
+See [analytics/README.md](analytics/README.md) for the
+full technical reference.
 
-- `analytics/schema/` defines the `DoraEvent` v2 schema in Pydantic and Zod.
-- `analytics/collector/` runs a FastAPI collector Lambda that validates events and stores them in DynamoDB.
-- `analytics/warehouse/` computes deployment frequency, lead time for changes, change failure rate, and MTTR.
-- `analytics/agent/` runs the DORA Analyst flow that produces a weekly digest and risk flags.
-- `analytics/dashboard/` provides the Streamlit dashboard for team, overview, and adoption views.
+### Engineering Overview
 
-Run the dashboard locally with:
+![DevEx Intelligence — Engineering Overview](docs/screenshots/dashboard-overview.png)
+
+Cross-team DORA metrics at a glance: deployment frequency,
+lead time, change failure rate, and MTTR. Team gauges show
+elite/high/medium/low ratings. The lead time chart includes
+the 24h elite threshold line so gaps are immediately visible.
+
+### Team Detail with AI Analysis
+
+![Payments — Team Detail](docs/screenshots/dashboard-team-detail.png)
+
+Per-team deep dive showing all four DORA metrics with elite
+threshold indicators. The AI Analysis section (powered by
+the DORA Analyst agent) delivers an executive summary,
+key insight, and one concrete recommendation.
+
+### Golden Path Adoption
+
+![Golden Path Adoption](docs/screenshots/dashboard-adoption.png)
+
+Tracks which teams are following platform standards and
+which DORA metrics have reached elite threshold across
+the organization.
+
+### Run locally
 
 ```bash
 cd analytics/dashboard && uv run streamlit run app.py
 ```
+
+The dashboard runs in demo mode by default — no AWS
+credentials required. See [analytics/README.md](analytics/README.md)
+for connecting to a live DynamoDB table.
 
 ## Known gaps
 
